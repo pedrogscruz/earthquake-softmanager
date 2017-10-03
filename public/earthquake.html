@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hello World</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false" type="text/javascript"></script>
+    <style >
+
+      @import url(https://fonts.googleapis.com/css?family=Roboto:400,500,700,900);
+
+      * {
+        font-family: 'Roboto';
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0px;
+        padding: 0px;
+      }
+
+      .header {
+        margin: 0px;
+        padding: 10px;
+        color: #333;
+        font-size: 26px;
+        background: #ddd;
+        border-bottom: 1px solid #ccc;
+      }
+
+      .title {
+        display: inline-block;
+      }
+
+      .search {
+        position: relative;
+        font-size: 16px;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        width: 100%;
+        z-index: 1;
+      }
+
+      .results {
+        width: 100%;
+        max-height: 200px;
+        overflow-y: auto;        
+      }
+
+      .selecteds {
+        height: calc(100vh - 51px);
+        display: inline-block;
+        width: 30vw;
+        overflow-y: auto;
+      }
+
+      .check {
+        display: inline-block;
+        border: 1px solid #ddd;
+        text-align: center;
+        width: 50%;
+      }
+
+      .mag {
+        display: inline-block;
+        font-size: 30px;
+        padding: 5px;
+      }
+
+      .info {
+        display: inline-block;
+        font-size: 12.3px;
+      }
+
+      .close {
+        display: inline-block;
+        font-size: 20px;
+        padding: 10.5px 7px;
+        border: 1px solid #ccc;
+        vertical-align: bottom;
+        float: right;
+      }
+
+      .maps {
+        overflow: hidden;
+        display: inline;
+        height: calc(100vh - 51px);
+        width: calc(70vw - 17px);
+        position: absolute !important;
+      }
+
+      .autocomplete {
+        float: right;
+        width: 43vw;
+        max-width: 700px;
+      }
+
+      .input_search {
+        display: inline-block;
+        width: 95%;
+        height: 30px;
+        border-bottom-left-radius: 4px;
+        border: 1px solid #ccc;
+        border-top-left-radius: 4px;
+      }
+
+      .button_search {
+        display: inline-block;
+        width: 5%;
+        height: 30px;
+        border: 1px solid #ccc;
+        border-bottom-right-radius: 4px;
+        border-top-right-radius: 4px;
+        background-color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="text/babel">
+      
+
+      class GoogleMaps extends React.Component {
+        constructor() {
+          super();
+        }
+        
+        shouldComponentUpdate() {
+          return false;
+        }
+        
+        componentWillReceiveProps(nextProps) {
+          this._setOptions(
+            nextProps.lat,
+            nextProps.lng,
+            nextProps.zoom
+          );
+          if (this.marker !== undefined) {
+            this.marker.map((mark) => {
+              mark.setMap(null);
+            })
+          }
+          this.marker = this.Markers();
+        }
+        
+        componentDidMount() {
+          this._renderMap();
+        }
+        
+        _setOptions(lat, lng, zoom) {
+          let mapOptions = {
+            center: { lat, lng },
+            zoom
+          };
+          this._map.setOptions(mapOptions);
+        }
+
+        Markers () {
+          return this.props.navLinks.map((b) => {
+              return new google.maps.Circle({
+                center: {lat: b[1], lng: b[0]},
+                map: this._map,
+                radius: b[2]*1000
+              })
+          })
+          
+        }
+        
+        _renderMap() {
+          let mapOptions= {
+            center: { lat: this.props.lat, lng: this.props.lng },
+            zoom: this.props.zoom
+          }
+          this._map = new google.maps.Map(this._map, mapOptions);
+        }
+        
+        render() {
+          return ( 
+            <div id="map"  className="maps" ref={m => this._map = m} />
+          );
+        }
+      }
+
+      // Application component ----
+
+      class App extends React.Component {
+        constructor() {
+          super();
+          this.state = {
+            autocomplete: '',            
+            lat: 0,
+            lng: 0,
+            zoom: 2,
+            posts: [],
+            navLinks: [],
+            expanded: false
+          }
+          // this.update_selection = this.update_selection.bind(this);
+          this._handleFormSubmit = this._handleFormSubmit.bind(this);
+          this.createMarker = this.createMarker.bind(this);
+          this.removeMarker = this.removeMarker.bind(this);
+          this.handleChange = this.handleChange.bind(this);
+        }
+
+        update_selection (index, value) {
+          if (value == "true") {
+            this.createMarker(this.state.posts[index].coordinates)
+          }
+          else {
+            this.removeMarker(this.state.posts[index].coordinates)
+          }
+          var items = this.state.posts;
+          items[index].selected = value;
+          this.setState({ posts: items });
+          this.setState({ autocomplete: '' });
+        }
+
+        update_all (value) {
+          if (value == "false") {
+            this.state.posts.map((plc, index) => {
+              if (plc.selected == "true") {
+                this.update_selection (index, value);
+              }
+            })
+          }
+          else {
+            this.state.posts.map((plc, index) => {
+              if (plc.selected == "false") {
+                this.update_selection (index, value);
+              }
+            })
+          }
+        }
+        
+        _handleFormSubmit(coordinates) {
+          this.setState({ lng: parseFloat(coordinates[0]) });
+          this.setState({ lat: parseFloat(coordinates[1]) });
+          for (var i=6; 591657550.5/Math.pow(2, i) > coordinates[2]*2000; i++);
+          i-=5;
+          if (i>23) {
+            i=20;
+          }
+          console.log(i);
+          this.setState({ zoom: i });
+        }
+
+        createMarker (b) {
+          var items = this.state.navLinks;
+          items.push(b);
+          this.setState({ navLinks: items });
+        }
+
+        removeMarker (b) {
+          var items = this.state.navLinks;
+          for (var i=0; i<items.length; i++) {
+            if (b[0]==items[i][0] && b[1]==items[i][1] && b[2]==items[i][2]) {
+              break;
+            }
+          }
+          items.splice(i, 1);
+          this.setState({ navLinks: items });
+        }
+
+        handleChange(event) {
+          this.setState({autocomplete: event.target.value});
+          this.setState({expanded: true});
+        }
+
+        componentDidMount () {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function() {
+            if (xhttp.readyState == 4 && xhttp.status == 200) {
+              const posts = JSON.parse(xhttp.responseText);
+              this.setState({ posts });
+            }
+          }.bind(this);
+          xhttp.open("GET", '/geojson', true);
+          xhttp.send();
+        }
+
+        render() {
+          return (
+            <div>
+              <div className="header">
+                <div className="title">Terremotos - Últimos 30 dias</div>
+                <div className="autocomplete" style={{cursor: "pointer"}} >
+                  <input className="input_search" type="text" value={this.state.autocomplete} onChange={this.handleChange} onClick={() => this.setState({ expanded: true })} />
+                  <button className="button_search" onClick={() => this.setState({ expanded: false })}>x</button>
+                  {this.state.expanded == true ?
+                    (<div className="search" style={{cursor: "pointer"}}>
+                      <div className="results">
+                        {this.state.posts.map((plc, index) =>
+                          plc.selected == "false" && plc.place.includes(this.state.autocomplete + '') ?
+                            (<div key={index} style={{padding: "2px 4px", borderBottom: "0.5px solid #eee"}} onClick={() => this.update_selection(index, "true")}>{plc.place}</div>):('')
+                        )}
+                      </div>
+                      <div className="check" onClick={() => this.update_all("false")}>Desmarcar Todos</div>
+                      <div className="check" onClick={() => this.update_all("true")}>Marcar Todos</div>
+                    </div>)
+                    :('')}
+                </div>
+              </div>
+              <div className="selecteds">
+                {this.state.posts.map((plc, index) =>
+                  plc.selected == "true" ?
+                    (<div style={{border: "1px solid #999", cursor: "pointer"}}>
+                      <div style={{display:"inline-table"}} key={index} onClick={() => this._handleFormSubmit(plc.coordinates)}>
+                        <div className="mag">{plc.mag}</div>
+                        <div className="info">
+                          <div>{plc.time}</div>
+                          <div>{plc.place}</div>
+                        </div>
+                      </div>
+                      <div className="close" onClick={() => this.update_selection(index, "false")}>x</div>
+                    </div>):('')
+                )}
+              </div>
+              <GoogleMaps
+                lat={this.state.lat} 
+                lng={this.state.lng} 
+                zoom={this.state.zoom}
+                navLinks={this.state.navLinks} />
+            </div>
+          );
+        }
+      }
+
+      ReactDOM.render(<App />, document.getElementById('app'));
+
+    </script>
+  </body>
+</html>
+
+<!--<form>
+                <div>
+                  <label>Lat</label>
+                  <input type="number" 
+                    name="lat" 
+                    defaultValue={this.state.lat}
+                    ref={i => this._lat = i} />
+                  <label>Lng</label>
+                  <input type="number" 
+                    name="lng" 
+                    defaultValue={this.state.lng}
+                    ref={i => this._lng = i} />
+                  <label>Zoom</label>
+                  <input type="number" 
+                    name="zoom" 
+                    defaultValue={this.state.zoom}
+                    ref={i => this._zoom = i} />
+                </div>
+                <button onClick={this._handleFormSubmit}>Submit</button>
+              </form>-->
